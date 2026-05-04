@@ -1,0 +1,78 @@
+{
+  "name": "veda-ralph-rlm",
+  "displayName": "Veda Ralph RLM",
+  "description": "Recursive Language Model (RLM) AI coding assistant integrated with VS Code",
+  "version": "0.0.1",
+  "publisher": "DerekJi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DerekJi/veda-ralph-rlm"
+  },
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages",
+    "Debuggers"
+  ],
+  "keywords": [
+    "AI",
+    "copilot",
+    "coding assistant",
+    "RLM",
+    "recursive",
+    "language model"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ralph-container",
+          "title": "Ralph RLM",
+          "icon": "resources/ralph-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "ralph-container": [
+        {
+          "id": "ralph-sidebar",
+          "name": "Ralph RLM",
+          "type": "webview",
+          "contextualTitle": "Ralph RLM Chat"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.92.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.4.0",
+    "vscode-test": "^1.6.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "execa": "^6.1.0",
+    "xstate": "^4.38.0"
+  }
+}

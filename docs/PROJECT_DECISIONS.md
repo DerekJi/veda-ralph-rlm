@@ -28,7 +28,41 @@
 
 ## 关键决策
 
-### 1. 开源参考库选择
+### 0. UI 架构：独立侧边栏面板而非 ChatParticipant
+
+**决策**: 使用 WebView 实现独立的侧边栏面板，而非混入 VS Code ChatParticipant
+
+**理由**:
+- ✅ **完整可见**: 用户能看到递归的每一步（提问 → 生成脚本 → 执行 → 结果）
+- ✅ **独立控制**: 不受 Copilot Chat 界面限制，完整的配置和日志面板
+- ✅ **脚本预览**: 执行前可预览和修改 AI 生成的脚本
+- ✅ **递归进度**: 实时展示当前第几轮、预计多少轮完成
+- ✅ **用户体验**: 清晰的任务进度和可操作性
+
+**UI 层次结构**:
+```
+Ralph Container (Activity Bar Icon)
+└── Ralph Sidebar Panel (WebView)
+    ├── Chat Input Zone (底部)
+    ├── Messages Zone (中间)
+    │   ├── User Message
+    │   ├── AI Thinking (转圈动画)
+    │   ├── Script Preview (待批准)
+    │   └── Execution Result
+    ├── Recursion Progress (顶部)
+    │   └── Current Round X / Max Y
+    ├── Configuration Tab
+    └── Logs Tab
+```
+
+**实现方案**:
+- 使用 `vscode.window.createWebviewPanel()` 或 `vscode.WebviewPanel`
+- 前端框架: React / Vue / 原生 HTML（待选）
+- 消息通信: `webview.postMessage()` + `window.addEventListener('message')`
+
+---
+
+### 2. 开源参考库选择
 
 **决策**: 使用 opencode-ralph-rlm 作为 RLM 状态机的参考实现
 
@@ -54,7 +88,7 @@
 
 ---
 
-### 2. 模型驱动选择
+### 3. 模型驱动选择
 
 **决策**: 优先使用 GitHub Copilot Enterprise via `vscode.lm` API
 
@@ -84,7 +118,7 @@ const providers = [
 
 ---
 
-### 3. 开发语言与框架
+### 4. 开发语言与框架
 
 **决策**: TypeScript + VS Code Extension API
 

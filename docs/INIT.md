@@ -30,24 +30,33 @@
     *   将 Stdout/Stderr 拼回上下文发送给下一轮推理。
 4.  **环境感知**：利用 VS Code API 自动扫描 `.github/skills` 和指令文件，动态注入 System Prompt。
 
----
-
 ## 4. 系统架构
+
 ```mermaid
 graph TD
-    UI[VS Code Chat UI] --> Agent[Chat Participant / Agent]
-    Agent --> Orchestrator[RLM Recursive Engine]
+    UI[Ralph Sidebar WebView] --> Handler[Message Handler]
+    Handler --> Orchestrator[RLM Recursive Engine]
     
     Orchestrator --> PromptMgr[Prompt Manager: 合并 .github/configs]
     Orchestrator --> Router[Model Router]
     
-    Router --> VSCodeLM[vscode.lm API - 穿透内网]
-    Router --> Ollama[Local Ollama - 离线模式]
+    Router --> VSCodeLM["vscode.lm API - GitHub Copilot"]
+    Router --> Ollama["Ollama - 本地离线模式"]
     
     Orchestrator --> Runner[Script Runner: 执行探测脚本]
-    Runner --> Workspace[Local Filesystem / Terminal]
+    Runner --> Workspace["Workspace: 文件系统 / Terminal"]
     Workspace --> Orchestrator
+    
+    UI -.执行结果.-> Workspace
+    Workspace -.进度更新.-> UI
 ```
+
+**独立面板架构优势**:
+- ✅ 完全独立的 UI（不与 Copilot Chat 混淆）
+- ✅ 完整可见的递归过程（每一步都展示）
+- ✅ 用户可以暂停、调试、修改参数
+- ✅ 完整的配置面板和日志查看
+- ✅ 实时进度指示和脚本预览
 
 ---
 
