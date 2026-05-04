@@ -45,6 +45,26 @@
           "contextualTitle": "Ralph RLM Chat"
         }
       ]
+    },
+    "configuration": {
+      "title": "Ralph RLM",
+      "properties": {
+        "veda-ralph-rlm.llmProvider": {
+          "type": "string",
+          "default": "github-copilot",
+          "enum": ["github-copilot", "ollama"],
+          "enumDescriptions": [
+            "Use GitHub Copilot API",
+            "Use local Ollama instance"
+          ],
+          "description": "LLM Provider to use"
+        },
+        "veda-ralph-rlm.llmModel": {
+          "type": "string",
+          "default": "gpt-4o",
+          "description": "LLM Model to use"
+        }
+      }
     }
   },
   "scripts": {

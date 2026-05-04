@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ralph RLM Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--vscode-editor-background, #1e1e1e);
+            color: var(--vscode-editor-foreground, #d4d4d4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--vscode-divider-background, #3e3e42);
+            background-color: var(--vscode-sideBar-background, #252526);
+            flex-shrink: 0;
+        }
+
+        .header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+            word-break: break-word;
+        }
+
+        .messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages::-webkit-scrollbar-thumb {
+            background-color: var(--vscode-scrollbarSlider-background, #464647);
+            border-radius: 4px;
+        }
+
+        .messages::-webkit-scrollbar-thumb:hover {
+            background-color: var(--vscode-scrollbarSlider-hoverBackground, #5a5a5a);
+        }
+
+        .message {
+            display: flex;
+            animation: slideIn 0.2s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            line-height: 1.5;
+            font-size: 13px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .user .message-content {
+            background-color: var(--vscode-button-background, #007acc);
+            color: var(--vscode-button-foreground, #fff);
+            border-radius: 12px;
+        }
+
+        .assistant .message-content {
+            background-color: var(--vscode-editor-lineHighlightBackground, #2d2d30);
+            color: var(--vscode-editor-foreground, #d4d4d4);
+            border: 1px solid var(--vscode-divider-background, #3e3e42);
+            border-radius: 8px;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--vscode-descriptionForeground, #6a9955);
+            text-align: center;
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .emoji {
+            font-size: 48px;
+            opacity: 0.8;
+        }
+
+        .empty-state-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--vscode-editor-foreground, #d4d4d4);
+        }
+
+        .empty-state-hint {
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground, #858585);
+        }
+
+        /* Input area with model selector */
+        .input-area {
+            border-top: 1px solid var(--vscode-divider-background, #3e3e42);
+            background-color: var(--vscode-sideBar-background, #252526);
+            padding: 12px 16px;
+            flex-shrink: 0;
+        }
+
+        .model-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .model-selector label {
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground, #858585);
+            font-weight: 500;
+        }
+
+        .model-selector select {
+            padding: 4px 8px;
+            background-color: var(--vscode-input-background, #3c3c3c);
+            color: var(--vscode-input-foreground, #d4d4d4);
+            border: 1px solid var(--vscode-input-border, #464647);
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .model-selector select:hover {
+            border-color: var(--vscode-focusBorder, #007acc);
+        }
+
+        .model-selector select:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder, #007acc);
+            box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+        }
+
+        .input-container {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--vscode-input-border, #464647);
+            border-radius: 4px;
+            background-color: var(--vscode-input-background, #3c3c3c);
+            color: var(--vscode-input-foreground, #d4d4d4);
+            font-size: 13px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            resize: none;
+            max-height: 80px;
+            line-height: 1.4;
+            min-height: 34px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder, #007acc);
+            box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+        }
+
+        textarea::placeholder {
+            color: var(--vscode-input-placeholderForeground, #858585);
+        }
+
+        button {
+            padding: 6px 14px;
+            border: 1px solid var(--vscode-input-border, #464647);
+            background-color: var(--vscode-button-background, #0e639c);
+            color: var(--vscode-button-foreground, #fff);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            background-color: var(--vscode-button-hoverBackground, #1177bb);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .current-model {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground, #858585);
+            padding: 4px 8px;
+            background-color: var(--vscode-editor-lineHighlightBackground, #2d2d30);
+            border-radius: 3px;
+            border: 1px solid var(--vscode-input-border, #464647);
+        }
+
+        .current-model strong {
+            color: var(--vscode-editor-foreground, #d4d4d4);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>🤖 Ralph RLM</h2>
+    </div>
+
+    <div class="chat-container">
+        <div class="messages" id="messages">
+            <div class="empty-state">
+                <div class="emoji">🤖</div>
+                <div class="empty-state-title">Ralph RLM</div>
+                <div class="empty-state-hint">Ask me anything to get started</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <!-- Model Selector -->
+            <div class="model-selector">
+                <label for="provider-select">Provider:</label>
+                <select id="provider-select">
+                    <option value="">Loading...</option>
+                </select>
+                <label for="model-select">Model:</label>
+                <select id="model-select">
+                    <option value="">Loading...</option>
+                </select>
+                <div class="current-model" id="current-model" style="display: none;">
+                    <strong id="current-model-text"></strong>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="input-container">
+                <textarea id="input" placeholder="Ask Ralph..." rows="1"></textarea>
+                <button id="send" title="Send message (Ctrl+Enter)">Send</button>
+                <button id="clear" title="Clear chat history">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const inputEl = document.getElementById('input');
+        const sendBtn = document.getElementById('send');
+        const clearBtn = document.getElementById('clear');
+        const providerSelect = document.getElementById('provider-select');
+        const modelSelect = document.getElementById('model-select');
+        const currentModelDisplay = document.getElementById('current-model');
+        const currentModelText = document.getElementById('current-model-text');
+
+        let hasMessages = false;
+        let currentConfig = {
+            provider: 'github-copilot',
+            model: 'gpt-4o',
+            availableProviders: [],
+            availableModels: []
+        };
+
+        const isTestMode = typeof acquireVsCodeApi === 'undefined';
+
+        let vscode;
+        try {
+            vscode = acquireVsCodeApi();
+        } catch {
+            vscode = {
+                postMessage: (msg) => {
+                    console.log('Mock postMessage:', msg);
+                }
+            };
+        }
+
+        // Storage for test mode
+        const storage = {
+            getProvider() {
+                return isTestMode ? localStorage.getItem('ralph-llm-provider') || 'github-copilot' : 'github-copilot';
+            },
+            getModel() {
+                return isTestMode ? localStorage.getItem('ralph-llm-model') || 'gpt-4o' : 'gpt-4o';
+            },
+            setProvider(provider) {
+                if (isTestMode) localStorage.setItem('ralph-llm-provider', provider);
+            },
+            setModel(model) {
+                if (isTestMode) localStorage.setItem('ralph-llm-model', model);
+            }
+        };
+
+        // Test data
+        const testModels = {
+            'github-copilot': ['gpt-4.1', 'gpt-4o'],
+            'ollama': [
+                'huihui_ai/qwen3-abliterated:14b',
+                'qwen3-coder:latest',
+                'llama3.2:latest',
+                'qwen2.5-coder:7b',
+                'gemma4:e2b',
+                'qwen2.5vl:3b',
+                'Moondream:latest',
+                'nomic-embed-text:latest',
+                'bge-m3:latest',
+                'qwen:7b-chat',
+                'qwen3-coder:30b',
+                'qwen3-vl:8b',
+                'qwen3:8b',
+                'deepseek-r1:32b',
+                'mychen76/fin-r1:Q5'
+            ]
+        };
+
+        // Initialize
+        window.addEventListener('load', () => {
+            currentConfig.provider = storage.getProvider();
+            currentConfig.model = storage.getModel();
+            initializeUI();
+            vscode.postMessage({ type: 'ready' });
+        });
+
+        window.addEventListener('message', (event) => {
+            const message = event.data;
+            if (message.type === 'config-data') {
+                handleConfigData(message);
+            }
+        });
+
+        function initializeUI() {
+            if (isTestMode) {
+                // Test mode: load from localStorage
+                currentConfig.availableProviders = ['github-copilot', 'ollama'];
+                currentConfig.availableModels = testModels[currentConfig.provider] || [];
+                renderProviders();
+                renderModels();
+                updateCurrentModelDisplay();
+            } else {
+                // Plugin mode: request from extension
+                vscode.postMessage({ type: 'ready' });
+            }
+        }
+
+        function handleConfigData(message) {
+            currentConfig = {
+                provider: message.currentProvider,
+                model: message.currentModel,
+                availableProviders: message.availableProviders,
+                availableModels: message.availableModels
+            };
+            renderProviders();
+            renderModels();
+            updateCurrentModelDisplay();
+        }
+
+        function renderProviders() {
+            providerSelect.innerHTML = '';
+            currentConfig.availableProviders.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider;
+                option.textContent = provider === 'github-copilot' ? 'GitHub Copilot' : 'Ollama';
+                providerSelect.appendChild(option);
+            });
+            providerSelect.value = currentConfig.provider;
+        }
+
+        function renderModels() {
+            modelSelect.innerHTML = '';
+            currentConfig.availableModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                modelSelect.appendChild(option);
+            });
+            modelSelect.value = currentConfig.model;
+        }
+
+        function updateCurrentModelDisplay() {
+            currentModelText.textContent = `${currentConfig.provider === 'github-copilot' ? '🤖' : '🦙'} ${currentConfig.model}`;
+        }
+
+        providerSelect.addEventListener('change', (e) => {
+            const newProvider = e.target.value;
+            currentConfig.provider = newProvider;
+            storage.setProvider(newProvider);
+
+            vscode.postMessage({
+                type: 'provider-changed',
+                provider: newProvider
+            });
+
+            if (isTestMode) {
+                const models = testModels[newProvider] || [];
+                currentConfig.availableModels = models;
+                currentConfig.model = models.length > 0 ? models[0] : 'llama2';
+                storage.setModel(currentConfig.model);
+                renderModels();
+                updateCurrentModelDisplay();
+            }
+        });
+
+        modelSelect.addEventListener('change', (e) => {
+            const newModel = e.target.value;
+            currentConfig.model = newModel;
+            storage.setModel(newModel);
+
+            vscode.postMessage({
+                type: 'model-changed',
+                provider: currentConfig.provider,
+                model: newModel
+            });
+
+            updateCurrentModelDisplay();
+        });
+
+        // Chat functionality
+        function autoResizeTextarea() {
+            inputEl.style.height = 'auto';
+            const newHeight = Math.min(inputEl.scrollHeight, 80);
+            inputEl.style.height = newHeight + 'px';
+        }
+
+        inputEl.addEventListener('input', autoResizeTextarea);
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function clearEmptyState() {
+            if (!hasMessages) {
+                messagesDiv.innerHTML = '';
+                hasMessages = true;
+            }
+        }
+
+        function addMessage(text, isUser) {
+            clearEmptyState();
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${isUser ? 'user' : 'assistant'}`;
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.textContent = text;
+            messageEl.appendChild(content);
+            messagesDiv.appendChild(messageEl);
+
+            requestAnimationFrame(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            });
+        }
+
+        function sendMessage() {
+            const message = inputEl.value.trim();
+            if (message) {
+                addMessage(message, true);
+                setTimeout(() => {
+                    const emoji = currentConfig.provider === 'github-copilot' ? '🤖' : '🦙';
+                    const providerName = currentConfig.provider === 'github-copilot' ? 'GitHub Copilot' : 'Ollama';
+                    addMessage(`${emoji} [${providerName}] ${currentConfig.model}\n\nYou said: "${message}"\n\nThis is a test response.`, false);
+                }, 500);
+                inputEl.value = '';
+                inputEl.style.height = 'auto';
+                inputEl.focus();
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        clearBtn.addEventListener('click', () => {
+            messagesDiv.innerHTML = `
+                <div class="empty-state">
+                    <div class="emoji">🤖</div>
+                    <div class="empty-state-title">Ralph RLM</div>
+                    <div class="empty-state-hint">Ask me anything to get started</div>
+                </div>
+            `;
+            hasMessages = false;
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+        });
+
+        inputEl.focus();
+    </script>
+</body>
+</html>

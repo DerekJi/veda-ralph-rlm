@@ -1,15 +1,14 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ConfigManager } from '../config/configManager';
+import { ConfigManager, LLMProvider } from './configManager';
 
 /**
- * Sidebar provider for Ralph RLM
- *
- * Manages the WebView panel for Ralph's chat interface in the VS Code sidebar
+ * Configuration WebView Provider for Ralph RLM
+ * Manages the settings UI for LLM provider and model selection
  */
-export class RalphSidebarProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'ralph-sidebar';
+export class ConfigViewProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = 'ralph-config';
 
   private view?: vscode.WebviewView;
   private configManager: ConfigManager;
@@ -26,11 +25,11 @@ export class RalphSidebarProvider implements vscode.WebviewViewProvider {
         this.context.extensionPath,
         'src',
         'views',
-        'chatView.html'
+        'configView.html'
       );
       this.htmlContent = fs.readFileSync(htmlPath, 'utf-8');
     } catch (error) {
-      console.error('Failed to load chatView.html:', error);
+      console.error('Failed to load configView.html:', error);
       this.htmlContent = this.getFallbackHtml();
     }
   }
@@ -44,13 +43,11 @@ export class RalphSidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.context.extensionUri],
+      localResourceRoots: [],
     };
 
-    // Set HTML content
-    if (this.htmlContent) {
-      this.view.webview.html = this.htmlContent;
-    }
+    // Set initial HTML content
+    this.updateWebviewContent();
 
     // Handle messages from the webview
     webviewView.webview.onDidReceiveMessage(async (data) => {
@@ -63,6 +60,9 @@ export class RalphSidebarProvider implements vscode.WebviewViewProvider {
           break;
         case 'model-changed':
           await this.handleModelChange(data.provider, data.model);
+          break;
+        case 'refresh-models':
+          await this.sendConfigData();
           break;
       }
     });
@@ -86,17 +86,14 @@ export class RalphSidebarProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private async handleProviderChange(provider: string): Promise<void> {
+  private async handleProviderChange(provider: LLMProvider): Promise<void> {
     if (!this.view) return;
 
-    const availableModels = await this.configManager.getAvailableModels(
-      provider as any
-    );
+    const availableModels = await this.configManager.getAvailableModels(provider);
     const defaultModel = availableModels.length > 0 ? availableModels[0] : 'llama2';
 
-    await this.configManager.setConfig(provider as any, defaultModel);
+    await this.configManager.setConfig(provider, defaultModel);
 
-    // Send updated models back to webview
     this.view.webview.postMessage({
       type: 'models-updated',
       provider,
@@ -105,14 +102,22 @@ export class RalphSidebarProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private async handleModelChange(provider: string, model: string): Promise<void> {
-    await this.configManager.setConfig(provider as any, model);
+  private async handleModelChange(provider: LLMProvider, model: string): Promise<void> {
+    await this.configManager.setConfig(provider, model);
+  }
+
+  private updateWebviewContent(): void {
+    if (!this.view || !this.htmlContent) return;
+
+    this.view.webview.html = this.htmlContent;
   }
 
   private getFallbackHtml(): string {
     return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <title>Ralph RLM Configuration</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -130,8 +135,8 @@ export class RalphSidebarProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
     <div class="error">
-        <h2>Failed to load chat view</h2>
-        <p>Please ensure chatView.html exists in the src/views directory.</p>
+        <h2>Failed to load configuration view</h2>
+        <p>Please ensure configView.html exists in the src/views directory.</p>
     </div>
 </body>
 </html>`;
